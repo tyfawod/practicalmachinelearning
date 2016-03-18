@@ -20,8 +20,47 @@ The raw data have a non-trivial time-dependence, since observations made during 
 
 Since the test data we're trying to predict consists of 20 single observations (without the statistical information), the variables corresponding to statistics during a time window were discarded. Additionally, variables with Div/0 values were discarded in order to keep variables with no singular values. Finally, the variables for the timestamp, the time window, and the user's name were discarded, since we assume there's no time dependence and the model might be used to predict data from other users besides the six test subjects. 
 
-The findCorrelation() function in the caret package was used to remove variables that are highly correlated with other variables. In the end, 47 variables including classe were retained. The 19622 observations were split into a training set (14718 observations) and a testing set (4904 observations). A random-forest algorithm with 2-fold cross-validation (chosen because it was a good compromise between accuracy and runtime) was trained on the training set and used to predict the classe variable in the testing set.
+The findCorrelation() function in the caret package was used to remove variables that are highly correlated with other variables. In the end, 47 variables including classe were retained. The 19622 observations were split into a training set (14718 observations) and a testing set (4904 observations). A random-forest algorithm with 2-fold cross-validation (chosen because it was a good compromise between accuracy and runtime) was trained on the training set and used to predict the classe variable in the testing set. In the end, the variables used in the model were
 
+```{r vars, cache=TRUE, echo=FALSE}
+library(dplyr)
+library(caret)
+library(doParallel)
+
+# Read in the training dataset
+dat <- read.csv("pml-training.csv")
+
+
+# Remove all variables with NA values.
+vars_to_keep <- NULL
+
+for (n in 1:length(dat[1,])) {
+  if (sum(is.na(dat[,n]))==0) {
+    vars_to_keep <- c(vars_to_keep, n)
+  }
+}
+
+stats_dat <- dat[,vars_to_keep]
+
+# Remove all factor variables (usually caused by a NaN in the data).
+vars_to_keep <- NULL
+
+for (n in 1:length(stats_dat[1,])) {
+  if (!is.factor(stats_dat[,n])) {
+    vars_to_keep <- c(vars_to_keep, n)
+  }
+}
+
+stats_dat <- stats_dat[,vars_to_keep]
+
+# Find the correlation between variables and remove highly correlated variables
+corr_mat <- abs(cor(stats_dat[,-length(names(stats_dat))]))
+corr_indices <- findCorrelation(corr_mat, names = FALSE)
+stats_dat <- stats_dat[, -corr_indices]
+
+stats_dat <- stats_dat[,5:length(names(stats_dat))]
+names(stats_dat)
+```
 
 # Results
 
@@ -83,6 +122,6 @@ rfFit <- train(classe~., method = "parRF", trControl = fitControl,tuneGrid=expan
 rfPred <- predict(rfFit, testing)
 confusionMatrix(rfPred, testing$classe)
 ```
-The expected out-of-sample accuracy of this model is 99%. However, this might still depend on using data obtained with the same subjects as the training dataset even though the user_name variable was excluded, since the training set had so few subjects.
+The expected out-of-sample accuracy of this model is 99% (so the out-of-sample error should be 0.82%). However, this might still depend on using data obtained with the same subjects as the training dataset even though the user_name variable was excluded, since the training set had so few subjects.
 
 [WLEData]: http://groupware.les.inf.puc-rio.br/har "Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013."

@@ -121,7 +121,22 @@ $(document).ready(function () {
 <p>The training dataset from <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv</a> contains data from six users doing 10 repetitions each of a dumbbell bicep curl in five different ways (quantified by the ‘classe’ variable). The data were collected from sensors (an accelerometer, a magnetometer, and a gyroscope) strapped to four areas: the user’s belt, the user’s arm, the user’s forearm, and the dumbbell. There are 19,622 observations of 160 variables in this dataset.</p>
 <p>The raw data have a non-trivial time-dependence, since observations made during one period of the exercise may more similar to each other than to observations made during another period of the exercise, independent of the way the user does the exercise. To minimize the effects of this time-dependence, the data were aggregated into time windows and statistics were collected on the raw data during each time window: the maximum value, minimum value, amplitude, average, standard deviation, and variance. However, if it is necessary to predict the way an exercise is being done given only a single observation, it should be better to use the raw data rather than the aggregated statistics cannot be used as a predictor</p>
 <p>Since the test data we’re trying to predict consists of 20 single observations (without the statistical information), the variables corresponding to statistics during a time window were discarded. Additionally, variables with Div/0 values were discarded in order to keep variables with no singular values. Finally, the variables for the timestamp, the time window, and the user’s name were discarded, since we assume there’s no time dependence and the model might be used to predict data from other users besides the six test subjects.</p>
-<p>The findCorrelation() function in the caret package was used to remove variables that are highly correlated with other variables. In the end, 47 variables including classe were retained. The 19622 observations were split into a training set (14718 observations) and a testing set (4904 observations). A random-forest algorithm with 2-fold cross-validation (chosen because it was a good compromise between accuracy and runtime) was trained on the training set and used to predict the classe variable in the testing set.</p>
+<p>The findCorrelation() function in the caret package was used to remove variables that are highly correlated with other variables. In the end, 47 variables including classe were retained. The 19622 observations were split into a training set (14718 observations) and a testing set (4904 observations). A random-forest algorithm with 2-fold cross-validation (chosen because it was a good compromise between accuracy and runtime) was trained on the training set and used to predict the classe variable in the testing set. In the end, the variables used in the model were</p>
+<pre><code>##  [1] &quot;pitch_belt&quot;           &quot;yaw_belt&quot;             &quot;total_accel_belt&quot;    
+##  [4] &quot;gyros_belt_x&quot;         &quot;gyros_belt_y&quot;         &quot;gyros_belt_z&quot;        
+##  [7] &quot;magnet_belt_x&quot;        &quot;magnet_belt_y&quot;        &quot;magnet_belt_z&quot;       
+## [10] &quot;roll_arm&quot;             &quot;pitch_arm&quot;            &quot;yaw_arm&quot;             
+## [13] &quot;total_accel_arm&quot;      &quot;gyros_arm_y&quot;          &quot;gyros_arm_z&quot;         
+## [16] &quot;accel_arm_x&quot;          &quot;accel_arm_y&quot;          &quot;accel_arm_z&quot;         
+## [19] &quot;magnet_arm_x&quot;         &quot;magnet_arm_y&quot;         &quot;magnet_arm_z&quot;        
+## [22] &quot;roll_dumbbell&quot;        &quot;pitch_dumbbell&quot;       &quot;yaw_dumbbell&quot;        
+## [25] &quot;total_accel_dumbbell&quot; &quot;gyros_dumbbell_y&quot;     &quot;accel_dumbbell_x&quot;    
+## [28] &quot;accel_dumbbell_y&quot;     &quot;accel_dumbbell_z&quot;     &quot;magnet_dumbbell_x&quot;   
+## [31] &quot;magnet_dumbbell_y&quot;    &quot;magnet_dumbbell_z&quot;    &quot;roll_forearm&quot;        
+## [34] &quot;pitch_forearm&quot;        &quot;yaw_forearm&quot;          &quot;total_accel_forearm&quot; 
+## [37] &quot;gyros_forearm_x&quot;      &quot;gyros_forearm_y&quot;      &quot;gyros_forearm_z&quot;     
+## [40] &quot;accel_forearm_x&quot;      &quot;accel_forearm_y&quot;      &quot;accel_forearm_z&quot;     
+## [43] &quot;magnet_forearm_x&quot;     &quot;magnet_forearm_y&quot;     &quot;magnet_forearm_z&quot;</code></pre>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
@@ -156,7 +171,7 @@ $(document).ready(function () {
 ## Detection Rate         0.2845   0.1917   0.1713   0.1609   0.1835
 ## Detection Prevalence   0.2857   0.1941   0.1750   0.1615   0.1837
 ## Balanced Accuracy      0.9991   0.9937   0.9890   0.9903   0.9993</code></pre>
-<p>The expected out-of-sample accuracy of this model is 99%. However, this might still depend on using data obtained with the same subjects as the training dataset even though the user_name variable was excluded, since the training set had so few subjects.</p>
+<p>The expected out-of-sample accuracy of this model is 99% (so the out-of-sample error should be 0.82%). However, this might still depend on using data obtained with the same subjects as the training dataset even though the user_name variable was excluded, since the training set had so few subjects.</p>
 </div>
 
 
