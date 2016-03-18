@@ -7,22 +7,82 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# Introduction
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+This project uses the training dataset from the [Groupware@LES Weight Lifting Exercise][WLEData], which obtained data from test subjects performing dumbbell curls in different manners, and tries to predict the manner in which the dumbbell curl was performed. The Weight Lifting Exercise dataset was further split into training (75%) and test (25%) datasets, and a model was fitted to the training dataset and used on the test dataset to obtain an estimate for the out-of-sample error. A random forest algorithm with 25-fold cross-validation was used on relevant predictor variables in the training dataset to obtain a predictive model with an accuracy of 78.8% on the test dataset. This accuracy is much less than the reported accuracy of 98.03% obtained by the [original researchers][WLEData], although it is similar to the reported accuracy of 78.2% when they tried to apply the model to a test subject not included in the training data.
 
-```{r cars}
-summary(cars)
+# Data and Methods
+
+The training dataset from <https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv> contains data from six users doing 10 repetitions each of a dumbbell bicep curl in five different ways (quantified by the 'classe' variable). The data were collected from sensors (an accelerometer, a magnetometer, and a gyroscope) strapped to four areas: the user's belt, the user's arm, the user's forearm, and the dumbbell. There are 19,622 observations of 160 variables in this dataset.
+
+The raw data have a non-trivial time-dependence, since observations made during one period of the exercise may more similar to each other than to observations made during another period of the exercise, independent of the way the user does the exercise. To minimize the effects of this time-dependence, the data were aggregated into time windows and statistics were collected on the raw data during each time window: the maximum value, minimum value, amplitude, average, standard deviation, and variance. There are 406 observations for which these statistics were collected, and the other observations were discarded.
+
+Since the statistics during a time window should be more meaningful than the raw data at the arbitrary time when a new window starts, only the variables corresponding to statistics of the aggregated data were retained. Additionally, since the data were only collected using six test subjects and out-of-sample data may include data from other people, the user_name variable corresponding to the subject's name was discarded. 
+
+The findCorrelation() function in the caret package was used to remove variables that are highly correlated with other variables. In the end, 46 variables including classe were retained.
+
+
+# Results
+
+```{r setupCode, cache=TRUE, echo=FALSE}
+library(dplyr)
+library(caret)
+library(doParallel)
+
+# Read in the training dataset
+dat <- read.csv("pml-training.csv")
+
+# Pick out the rows in the dataset that have a new window (this means they have
+# statistics for the variables in that time window)
+dat <- filter(dat, new_window=="yes")
+
+
+# Remove the x, user, timestamp, and window data
+dat <- dat[,8:length(names(dat))]
+
+
+# Remove all factor variables (usually caused by a NaN in the data).
+vars_to_keep <- NULL
+
+for (n in 1:length(dat[1,])) {
+  if (!is.factor(dat[,n])) {
+    vars_to_keep <- c(vars_to_keep, n)
+  }
+}
+
+stats_dat <- dat[,vars_to_keep]
+
+# Extract the statistical values over the time period
+stat_indices <- grep("max|min|amplitude|var|avg|stddev",names(stats_dat))
+stats_dat <- stats_dat[,stat_indices]
+
+# Find the correlation between variables and remove highly correlated variables
+corr_mat <- abs(cor(stats_dat[,-length(names(stats_dat))]))
+corr_indices <- findCorrelation(corr_mat, names = FALSE)
+stats_dat <- stats_dat[, -corr_indices]
+
+# Add in the classe variable
+stats_dat$classe <- dat$classe
+
+# Split data set into testing and training sets
+set.seed(1523)
+inTrain <- createDataPartition(y= stats_dat$classe, p= 0.75, list= FALSE)
+training <- stats_dat[inTrain,]
+testing <- stats_dat[-inTrain,]
+
+# Make sure the model does k-fold cross-validation
+set.seed(2678)
+k <- 25
+fitControl <- trainControl(method = "repeatedcv", number = k, repeats = k)
+
+registerDoParallel()
+
+rfFit <- train(classe~., method = "parRF", trControl = fitControl, tuneGrid=expand.grid(mtry = 10), data = training)
+rfPred <- predict(rfFit, testing)
+confusionMatrix(rfPred, testing$classe)
+
 ```
+The expected out-of-sample accuracy of this model is 78.8%.
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+[WLEData]: http://groupware.les.inf.puc-rio.br/har "Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013."
